@@ -3,12 +3,12 @@
 import AVFoundation
 
 
-final class ScreenRecorder: NSObject, AVCaptureFileOutputRecordingDelegate {
+final class ScreenRecorder: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
     private let session = AVCaptureSession()
 
     // Output type is a file
-    private let output = AVCaptureMovieFileOutput()
+    private let output = AVCaptureVideoDataOutput()
 
     // Store destination
     private var savePath: URL {
@@ -44,6 +44,12 @@ final class ScreenRecorder: NSObject, AVCaptureFileOutputRecordingDelegate {
             session.addInput(input)
         }
 
+        // (from: https://qiita.com/TakahiroYamamoto/items/e970658a98a4e659cf9e)
+        // output.videoSettings = [kCVPixelBufferPixelFormatTypeKey as AnyHashable as! String : Int(kCVPixelFormatType_32BGRA)]
+        output.alwaysDiscardsLateVideoFrames = true
+        let queue:DispatchQueue = DispatchQueue(label: "myqueue", attributes: .concurrent)
+        output.setSampleBufferDelegate(self, queue: queue)
+
         if session.canAddOutput(output) {
             print("can add output")
             // Add output
@@ -54,20 +60,17 @@ final class ScreenRecorder: NSObject, AVCaptureFileOutputRecordingDelegate {
     // Start recording
     func start() {
         session.startRunning()
-        output.startRecording(to: savePath, recordingDelegate: self)
+        // output.startRecording(to: savePath, recordingDelegate: self)
+        // output.setSampleBufferDelegate(self, queue: nil)
     }
 
     // Stop recording
     func stop() {
-        output.stopRecording()
+        // output.stopRecording()
     }
 
-    func capture(_ captureOutput: AVCaptureFileOutput!, didFinishRecordingToOutputFileAt outputFileURL: URL!, fromConnections connections: [Any]!, error: Error!) {
-        session.stopRunning()
-    }
-
-    func fileOutput(_ output: AVCaptureFileOutput, didFinishRecordingTo outputFileURL: URL, from connections: [AVCaptureConnection], error: Error?) {
-        print("fileOutput called...")
+    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        print(Date(), ": captureOutput called!")
     }
 }
 
@@ -77,10 +80,13 @@ let recorder = ScreenRecorder()
 print("Starting...")
 recorder.start()
 
-// Sleep for a while
-// TODO: Remove: this is debug purpose
-Thread.sleep(forTimeInterval: 10.0)
+print("Enter to stop")
+let _ = readLine(strippingNewline: true)!
 
-// TODO: Remove
-print("Stop")
-recorder.stop()
+// // Sleep for a while
+// // TODO: Remove: this is debug purpose
+// Thread.sleep(forTimeInterval: 10.0)
+
+// // TODO: Remove
+// print("Stop")
+// recorder.stop()
